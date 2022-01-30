@@ -1,0 +1,4 @@
+include README.md
+recursive-include octoprint_prusa_chain_production/templates *
+recursive-include octoprint_prusa_chain_production/translations *
+recursive-include octoprint_prusa_chain_production/static *
