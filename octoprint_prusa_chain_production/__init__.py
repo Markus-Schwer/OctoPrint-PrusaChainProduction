@@ -3,13 +3,19 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 
-class PrusaChainProductionPlugin(octoprint.plugin.StartupPlugin,
-    octoprint.plugin.SettingsPlugin,
+class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
-    octoprint.plugin.TemplatePlugin
+    octoprint.plugin.TemplatePlugin,
+    octoprint.plugin.SimpleApiPlugin
 ):
-    def on_after_startup(self):
-        self._logger.info("Hello World!")
+    def send_eject(self):
+        # TODO: luca implement me!
+
+    def send_fan(self, enabled):
+        # TODO: luca implement me!
+
+    def send_led(self, enabled):
+        # TODO: luca implement me!
 
     ##~~ SettingsPlugin mixin
 
@@ -29,12 +35,33 @@ class PrusaChainProductionPlugin(octoprint.plugin.StartupPlugin,
             "less": ["less/prusa_chain_production.less"]
         }
 
-    ##~~ TemplatePlugin mixin
+    ##~~ SimpleApiPlugin mixin
 
-    # def get_template_configs(self):
-    #     return [
-    #         dict(type="generic", template="prusa_chain_production.jinja2", custom_bindings=True)
-    #     ]
+    def get_api_commands(self):
+        return dict(
+            eject=[],
+            setFan=["enabled"],
+            setLed=["enabled"]
+        )
+
+    def on_api_command(self, command, data):
+        if command == "eject":
+            self.send_eject()
+        elif command == "setFan":
+            self.send_fan(data["enabled"])
+        elif command == "setLed":
+            self.send_led(data["enabled"])
+
+    def on_api_get(self, request):
+        self._logger.debug("on_api_get({}).Json: ".format(request, request.get_json()))
+        if request == "getLightValues":
+            response = dict()
+            for pin in self.Lights:
+                response(pin=self.Lights[pin]["value"])
+            return flask.jsonify(response)
+
+    def is_api_adminonly(self):
+        return True
 
     ##~~ Softwareupdate hook
 
