@@ -2,20 +2,31 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
+import requests
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.TemplatePlugin,
     octoprint.plugin.SimpleApiPlugin
 ):
+    host = "prusa_chain"
+    port = 80
+
+    def control_device(name,cmd):
+        if(cmd == "true"):
+            cmd = 1
+        else:
+            cmd = 0
+        requests.get('http://'+host+':'+str(port)+'/'+name+'/'+str(cmd))
+
     def send_eject(self):
-        # TODO: luca implement me!
+        control_device("fan","true")
 
     def send_fan(self, enabled):
-        # TODO: luca implement me!
+        control_device("fan",enabled)
 
     def send_led(self, enabled):
-        # TODO: luca implement me!
+        control_device("led",enabled)
 
     ##~~ SettingsPlugin mixin
 
