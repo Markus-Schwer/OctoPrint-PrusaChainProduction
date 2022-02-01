@@ -10,14 +10,32 @@ $(() => {
 
         const PLUGIN_ID = "prusa_chain_production";
 
-        // TODO: controlViewModel might not be needed, maybe remove
-        self.controlViewModel = parameters[0];
+        self.loginStateViewModel = parameters[0];
+        self.settingsViewModel = parameters[1];
+        self.controlViewModel = parameters[2];
+
+        self.onStartup = () => {
+            // sidebar
+			var sidebar_tab = $('#sidebar_plugin_prusa_chain_production');
+			sidebar_tab.removeClass('overflow_visible in').addClass('collapse').siblings('div.accordion-heading').children('a.accordion-toggle').addClass('collapsed');
+        };
 
         self.onAfterBinding = () => {
+            // control tab
             let controlContainer = $('#control-jog-general');
             let chainProductionControls = $('#controls_prusa_chain_production');
 
             chainProductionControls.insertAfter(controlContainer);
+
+			// $.ajax({
+			// 	url: API_BASEURL + "plugin/" + PLUGIN_ID,
+			// 	type: "POST",
+			// 	dataType: "json",
+			// 	data: JSON.stringify({
+			// 		command: "checkStatus"
+			// 	}),
+			// 	contentType: "application/json; charset=UTF-8"
+			// });
         };
 
         self.executeCommand = (command, params = {}) => {
@@ -61,7 +79,7 @@ $(() => {
     OCTOPRINT_VIEWMODELS.push({
         construct: PrusaChainProductionViewModel,
         // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
-        dependencies: ['controlViewModel'],
-        elements: ['#controls_prusa_chain_production']
+        dependencies: ['loginStateViewModel', 'settingsViewModel', 'controlViewModel'],
+        elements: ['#controls_prusa_chain_production', '#sidebar_plugin_prusa_chain_production_wrapper']
     });
 });

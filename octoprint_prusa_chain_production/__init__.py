@@ -4,12 +4,12 @@ from __future__ import absolute_import
 import octoprint.plugin
 import requests
 
+
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
-    octoprint.plugin.StartupPlugin,
-    octoprint.plugin.AssetPlugin,
-    octoprint.plugin.TemplatePlugin,
-    octoprint.plugin.SimpleApiPlugin
-):
+                                 octoprint.plugin.StartupPlugin,
+                                 octoprint.plugin.AssetPlugin,
+                                 octoprint.plugin.TemplatePlugin,
+                                 octoprint.plugin.SimpleApiPlugin):
     server_url = None
 
     def control_device(self, name, cmd):
@@ -18,7 +18,8 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         if trimmed_server_url.endswith('/'):
             trimmed_server_url = trimmed_server_url[:-1]
 
-        requests.get("{}/{}/{}".format(trimmed_server_url, name, "1" if cmd == "true" else "0"))
+        requests.get("{}/{}/{}".format(trimmed_server_url, name,
+                                       "1" if cmd == "true" else "0"))
 
     ##~~ AssetPlugin mixin
 
@@ -29,9 +30,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return dict(
-            server_url="http://prusa_chain"
-        )
+        return dict(server_url="http://prusa_chain")
 
     def on_settings_save(self, data):
         octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
@@ -51,15 +50,23 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             "less": ["less/prusa_chain_production.less"]
         }
 
+    ##~~ TemplatePlugin mixin
+
+    def get_template_configs(self):
+        return [
+            dict(type="generic",
+                 template="prusa_chain_production_controls.jinja2"),
+            dict(type="settings",
+                 template="prusa_chain_production_settings.jinja2"),
+            dict(type="sidebar",
+                 icon="plug",
+                 template="prusa_chain_production_sidebar.jinja2")
+        ]
+
     ##~~ SimpleApiPlugin mixin
 
     def get_api_commands(self):
-        return dict(
-            eject=[],
-            reset=[],
-            setFan=["enabled"],
-            setLed=["enabled"]
-        )
+        return dict(eject=[], reset=[], setFan=["enabled"], setLed=["enabled"])
 
     def on_api_command(self, command, data):
         if command == "eject":
@@ -90,17 +97,24 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         # for details.
         return {
             "prusa_chain_production": {
-                "displayName": "PrusaChainProduction Plugin",
-                "displayVersion": self._plugin_version,
+                "displayName":
+                "PrusaChainProduction Plugin",
+                "displayVersion":
+                self._plugin_version,
 
                 # version check: github repository
-                "type": "github_release",
-                "user": "Markus-Schwer",
-                "repo": "OctoPrint-PrusaChainProduction",
-                "current": self._plugin_version,
+                "type":
+                "github_release",
+                "user":
+                "Markus-Schwer",
+                "repo":
+                "OctoPrint-PrusaChainProduction",
+                "current":
+                self._plugin_version,
 
                 # update method: pip
-                "pip": "https://github.com/Markus-Schwer/OctoPrint-PrusaChainProduction/archive/{target_version}.zip",
+                "pip":
+                "https://github.com/Markus-Schwer/OctoPrint-PrusaChainProduction/archive/{target_version}.zip",
             }
         }
 
@@ -115,7 +129,8 @@ __plugin_name__ = "PrusaChainProduction Plugin"
 # compatibility flags according to what Python versions your plugin supports!
 #__plugin_pythoncompat__ = ">=2.7,<3" # only python 2
 #__plugin_pythoncompat__ = ">=3,<4" # only python 3
-__plugin_pythoncompat__ = ">=2.7,<4" # python 2 and 3
+__plugin_pythoncompat__ = ">=2.7,<4"  # python 2 and 3
+
 
 def __plugin_load__():
     global __plugin_implementation__
@@ -123,5 +138,6 @@ def __plugin_load__():
 
     global __plugin_hooks__
     __plugin_hooks__ = {
-        "octoprint.plugin.softwareupdate.check_config": __plugin_implementation__.get_update_information
+        "octoprint.plugin.softwareupdate.check_config":
+        __plugin_implementation__.get_update_information
     }
