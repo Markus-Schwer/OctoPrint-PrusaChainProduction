@@ -8,7 +8,7 @@ $(() => {
     function PrusaChainProductionViewModel(parameters) {
         var self = this;
 
-        const PLUGIN_ID = "PrusaChainProduction";
+        const PLUGIN_ID = "prusa_chain_production";
 
         // TODO: controlViewModel might not be needed, maybe remove
         self.controlViewModel = parameters[0];
@@ -18,62 +18,39 @@ $(() => {
             let chainProductionControls = $('#controls_prusa_chain_production');
 
             chainProductionControls.insertAfter(controlContainer);
-            // only display the container after it was moved to the correct position
-            chainProductionControls.css('display', '');
         };
 
-        self.onEject = () => {
+        self.executeCommand = (command, params = {}) => {
             $.ajax({
                 url: API_BASEURL + "plugin/" + PLUGIN_ID,
                 type: "POST",
                 dataType: "json",
                 data: JSON.stringify({
-                    command: "eject",
+                    command,
+                    ...params
                 }),
                 contentType: "application/json; charset=UTF-8"
             }).done((data) => {
-
             }).always(() => {
-
             });
+        }
+
+        self.onReset = () => {
+            self.executeCommand("reset");
+        }
+
+        self.onEject = () => {
+            self.executeCommand("eject");
         }
 
         self.onSetFan = (_, e) => {
             const param = $(e.target).data('parameter');
-
-            $.ajax({
-                url: API_BASEURL + "plugin/" + PLUGIN_ID,
-                type: "POST",
-                dataType: "json",
-                data: JSON.stringify({
-                    command: "setFan",
-                    enabled: param
-                }),
-                contentType: "application/json; charset=UTF-8"
-            }).done((data) => {
-
-            }).always(() => {
-
-            });
+            self.executeCommand("setFan", { enabled: param });
         }
 
         self.onSetLed = (_, e) => {
             const param = $(e.target).data('parameter');
-
-            $.ajax({
-                url: API_BASEURL + "plugin/" + PLUGIN_ID,
-                type: "POST",
-                dataType: "json",
-                data: JSON.stringify({
-                    command: "setLed",
-                    enabled: param
-                }),
-                contentType: "application/json; charset=UTF-8"
-            }).done((data) => {
-
-            }).always(() => {
-
-            });
+            self.executeCommand("setLed", { enabled: param });
         }
     }
 

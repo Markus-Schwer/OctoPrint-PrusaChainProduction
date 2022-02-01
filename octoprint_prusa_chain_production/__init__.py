@@ -5,35 +5,40 @@ import octoprint.plugin
 import requests
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
+    octoprint.plugin.StartupPlugin,
     octoprint.plugin.AssetPlugin,
     octoprint.plugin.TemplatePlugin,
     octoprint.plugin.SimpleApiPlugin
 ):
-    host = "prusa_chain"
-    port = 80
+    server_url = None
 
-    def control_device(name,cmd):
-        if(cmd == "true"):
-            cmd = 1
-        else:
-            cmd = 0
-        requests.get('http://'+host+':'+str(port)+'/'+name+'/'+str(cmd))
+    def control_device(self, name, cmd):
+        trimmed_server_url = self.server_url
+        # trim trailing slashes
+        if trimmed_server_url.endswith('/'):
+            trimmed_server_url = trimmed_server_url[:-1]
 
-    def send_eject(self):
-        control_device("fan","true")
+        requests.get("{}/{}/{}".format(trimmed_server_url, name, "1" if cmd == "true" else "0"))
 
-    def send_fan(self, enabled):
-        control_device("fan",enabled)
+    ##~~ AssetPlugin mixin
 
-    def send_led(self, enabled):
-        control_device("led",enabled)
+    def on_after_startup(self):
+        self.server_url = self._settings.get(["server_url"])
+        self._logger.info("server_url = {}".format(self.server_url))
 
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return {
-            # put your plugin's default settings here
-        }
+        return dict(
+            server_url="http://prusa_chain"
+        )
+
+    def on_settings_save(self, data):
+        octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
+        self.server_url = self._settings.get(["server_url"])
+
+    def on_settings_initialized(self):
+        self.server_url = self._settings.get(["server_url"])
 
     ##~~ AssetPlugin mixin
 
@@ -51,25 +56,28 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     def get_api_commands(self):
         return dict(
             eject=[],
+            reset=[],
             setFan=["enabled"],
             setLed=["enabled"]
         )
 
     def on_api_command(self, command, data):
         if command == "eject":
-            self.send_eject()
+            self.control_device("eject", "true")
+        elif command == "reset":
+            self.control_device("reset", "true")
         elif command == "setFan":
-            self.send_fan(data["enabled"])
+            self.control_device("fan", data["enabled"])
         elif command == "setLed":
-            self.send_led(data["enabled"])
+            self.control_device("led", data["enabled"])
 
-    def on_api_get(self, request):
-        self._logger.debug("on_api_get({}).Json: ".format(request, request.get_json()))
-        if request == "getLightValues":
-            response = dict()
-            for pin in self.Lights:
-                response(pin=self.Lights[pin]["value"])
-            return flask.jsonify(response)
+    # def on_api_get(self, request):
+    #     self._logger.debug("on_api_get({}).Json: ".format(request, request.get_json()))
+    #     if request == "getLightValues":
+    #         response = dict()
+    #         for pin in self.Lights:
+    #             response(pin=self.Lights[pin]["value"])
+    #         return flask.jsonify(response)
 
     def is_api_adminonly(self):
         return True
