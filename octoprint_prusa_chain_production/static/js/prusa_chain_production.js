@@ -13,29 +13,39 @@ $(() => {
         self.loginStateViewModel = parameters[0];
         self.settingsViewModel = parameters[1];
         self.controlViewModel = parameters[2];
-
-        self.onStartup = () => {
-            // sidebar
-			var sidebar_tab = $('#sidebar_plugin_prusa_chain_production');
-			sidebar_tab.removeClass('overflow_visible in').addClass('collapse').siblings('div.accordion-heading').children('a.accordion-toggle').addClass('collapsed');
-        };
+        self.ejectState = ko.observable("STANDBY");
+        self.fanState = ko.observable("OFF");
+        self.ledState = ko.observable("OFF");
 
         self.onAfterBinding = () => {
             // control tab
-            let controlContainer = $('#control-jog-general');
-            let chainProductionControls = $('#controls_prusa_chain_production');
+            let controlContainer = $("#control-jog-general");
+            let chainProductionControls = $("#controls_prusa_chain_production");
 
             chainProductionControls.insertAfter(controlContainer);
 
-			// $.ajax({
-			// 	url: API_BASEURL + "plugin/" + PLUGIN_ID,
-			// 	type: "POST",
-			// 	dataType: "json",
-			// 	data: JSON.stringify({
-			// 		command: "checkStatus"
-			// 	}),
-			// 	contentType: "application/json; charset=UTF-8"
-			// });
+            self.fetchStatus();
+        };
+
+        self.onDataUpdaterPluginMessage = (plugin, data) => {
+            if (plugin === PLUGIN_ID) {
+                self.fetchStatus();
+            }
+        };
+
+        self.fetchStatus = () => {
+            $.ajax({
+                url: API_BASEURL + "plugin/" + PLUGIN_ID,
+                type: "GET",
+                contentType: "application/json; charset=UTF-8"
+            }).done((data) => {
+                if (data?.ejecting !== undefined)
+                    self.ejectState(data.ejecting ? "EJECTING" : "STANDBY");
+                if (data?.fansOn !== undefined)
+                    self.fanState(data.fansOn ? "ON" : "OFF");
+                if (data?.ledsOn !== undefined)
+                    self.ledState(data.ledsOn ? "ON" : "OFF");
+            });
         };
 
         self.executeCommand = (command, params = {}) => {
@@ -48,28 +58,26 @@ $(() => {
                     ...params
                 }),
                 contentType: "application/json; charset=UTF-8"
-            }).done((data) => {
-            }).always(() => {
-            });
-        }
+            }).always(() => self.fetchStatus());
+        };
 
-        self.onReset = () => {
-            self.executeCommand("reset");
-        }
+        self.onStopEject = () => {
+            self.executeCommand("stop_eject");
+        };
 
         self.onEject = () => {
             self.executeCommand("eject");
-        }
+        };
 
         self.onSetFan = (_, e) => {
-            const param = $(e.target).data('parameter');
-            self.executeCommand("setFan", { enabled: param });
-        }
+            const param = $(e.target).data("parameter");
+            self.executeCommand("setFan", {enabled: param});
+        };
 
         self.onSetLed = (_, e) => {
-            const param = $(e.target).data('parameter');
-            self.executeCommand("setLed", { enabled: param });
-        }
+            const param = $(e.target).data("parameter");
+            self.executeCommand("setLed", {enabled: param});
+        };
     }
 
     /* view model class, parameters for constructor, container to bind to
@@ -79,7 +87,10 @@ $(() => {
     OCTOPRINT_VIEWMODELS.push({
         construct: PrusaChainProductionViewModel,
         // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
-        dependencies: ['loginStateViewModel', 'settingsViewModel', 'controlViewModel'],
-        elements: ['#controls_prusa_chain_production', '#sidebar_plugin_prusa_chain_production_wrapper']
+        dependencies: ["loginStateViewModel", "settingsViewModel", "controlViewModel"],
+        elements: [
+            "#controls_prusa_chain_production",
+            "#sidebar_plugin_prusa_chain_production_wrapper"
+        ]
     });
 });

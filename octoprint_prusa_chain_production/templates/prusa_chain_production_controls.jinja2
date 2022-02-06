@@ -4,6 +4,9 @@
         <button class="btn btn-block control-box btn-danger" data-bind="click: onEject">
             Eject
         </button>
+        <button class="btn btn-block control-box btn-warning" data-bind="click: onStopEject">
+            Stop Eject
+        </button>
         <label>Fan</label>
         <div class="btn-group" role="group" aria-label="Fan">
             <button class="btn" data-parameter="true" data-bind="click: onSetFan">
@@ -22,15 +25,5 @@
                 Off
             </button>
         </div>
-        <label
-            >Reset Ejector
-            <a
-                class="text-info"
-                data-bind="popover: {placement: 'top', trigger: 'hover', title: 'Please note!', content: 'This will cancel every currently running action on the ejector'}"
-                ><i class="fas fa-info-circle"></i></a
-        ></label>
-        <button class="btn btn-block control-box btn-warning" data-bind="click: onReset">
-            Reset
-        </button>
     </div>
 </div>

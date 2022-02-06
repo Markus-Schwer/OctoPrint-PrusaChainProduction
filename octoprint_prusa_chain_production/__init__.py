@@ -3,23 +3,40 @@ from __future__ import absolute_import
 
 import octoprint.plugin
 import requests
+import threading
+import flask
+
+def control_device(server_url, name, cmd):
+    # trim trailing slashes
+    if server_url.endswith('/'):
+        server_url = server_url[:-1]
+
+    requests.get("{}/{}/{}".format(server_url, name,
+                                    "1" if cmd else "0"))
 
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.StartupPlugin,
                                  octoprint.plugin.AssetPlugin,
                                  octoprint.plugin.TemplatePlugin,
+                                 octoprint.plugin.EventHandlerPlugin,
                                  octoprint.plugin.SimpleApiPlugin):
     server_url = None
+    state = dict(
+        ejecting=False,
+        fansOn=False,
+        ledsOn=False
+    )
 
-    def control_device(self, name, cmd):
-        trimmed_server_url = self.server_url
-        # trim trailing slashes
-        if trimmed_server_url.endswith('/'):
-            trimmed_server_url = trimmed_server_url[:-1]
+    ##~~ EventHandlerPlugin mixin
 
-        requests.get("{}/{}/{}".format(trimmed_server_url, name,
-                                       "1" if cmd == "true" else "0"))
+    def on_event(self, event, payload):
+        if event == "PrintDone":
+            # non-blocking eject
+            threading.Thread(target=eject, args=(self.server_url, "eject", True))
+
+            # send message to frontend, to update its state
+            self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     ##~~ AssetPlugin mixin
 
@@ -59,32 +76,34 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             dict(type="settings",
                  template="prusa_chain_production_settings.jinja2"),
             dict(type="sidebar",
-                 icon="plug",
+                 icon="cogs",
                  template="prusa_chain_production_sidebar.jinja2")
         ]
 
     ##~~ SimpleApiPlugin mixin
 
     def get_api_commands(self):
-        return dict(eject=[], reset=[], setFan=["enabled"], setLed=["enabled"])
+        return dict(eject=[], stop_eject=[], setFan=["enabled"], setLed=["enabled"])
 
     def on_api_command(self, command, data):
         if command == "eject":
-            self.control_device("eject", "true")
-        elif command == "reset":
-            self.control_device("reset", "true")
+            self.state["ejecting"] = True
+            control_device(self.server_url, "eject", True)
+        elif command == "stop_eject":
+            self.state["ejecting"] = False
+            control_device(self.server_url, "stop_eject", True)
         elif command == "setFan":
-            self.control_device("fan", data["enabled"])
+            self.state["fansOn"] = data["enabled"]
+            control_device(self.server_url, "fan", data["enabled"])
         elif command == "setLed":
-            self.control_device("led", data["enabled"])
+            self.state["ledsOn"] = data["enabled"]
+            control_device(self.server_url, "led", data["enabled"])
 
-    # def on_api_get(self, request):
-    #     self._logger.debug("on_api_get({}).Json: ".format(request, request.get_json()))
-    #     if request == "getLightValues":
-    #         response = dict()
-    #         for pin in self.Lights:
-    #             response(pin=self.Lights[pin]["value"])
-    #         return flask.jsonify(response)
+        # send message to frontend, to update its state
+        self._plugin_manager.send_plugin_message(self._identifier, dict())
+
+    def on_api_get(self, request):
+        return flask.jsonify(self.state)
 
     def is_api_adminonly(self):
         return True
