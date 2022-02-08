@@ -13,9 +13,35 @@ $(() => {
         self.loginStateViewModel = parameters[0];
         self.settingsViewModel = parameters[1];
         self.controlViewModel = parameters[2];
-        self.ejectState = ko.observable("STANDBY");
-        self.fanState = ko.observable("OFF");
-        self.ledState = ko.observable("OFF");
+        self.ejecting = ko.observable(undefined);
+        self.fansOn = ko.observable(undefined);
+        self.ledsOn = ko.observable(undefined);
+        self.isErrorOrClosed = ko.observable(undefined);
+
+        self.connectionButtonText = ko.pureComputed(() => {
+            if (self.isErrorOrClosed()) return gettext("Connect");
+            else return gettext("Disconnect");
+        });
+        self.ejectText = ko.pureComputed(() => {
+            if (self.isErrorOrClosed()) return "-";
+            else if (self.ejecting()) return gettext("EJECTING")
+            else return gettext("IDLE");
+        });
+        self.fanText = ko.pureComputed(() => {
+            if (self.isErrorOrClosed()) return "-";
+            else if (self.fansOn()) return gettext("ON")
+            else return gettext("OFF");
+        });
+        self.ledText = ko.pureComputed(() => {
+            if (self.isErrorOrClosed()) return "-";
+            else if (self.ledsOn()) return gettext("ON")
+            else return gettext("OFF");
+        });
+
+        self.connect = () => {
+            if (self.isErrorOrClosed()) self.executeCommand("connect");
+            else self.executeCommand("disconnect");
+        };
 
         self.onAfterBinding = () => {
             // control tab
@@ -28,6 +54,7 @@ $(() => {
         };
 
         self.onDataUpdaterPluginMessage = (plugin, data) => {
+            // TODO: also update when print status changes
             if (plugin === PLUGIN_ID) {
                 self.fetchStatus();
             }
@@ -39,12 +66,10 @@ $(() => {
                 type: "GET",
                 contentType: "application/json; charset=UTF-8"
             }).done((data) => {
-                if (data?.ejecting !== undefined)
-                    self.ejectState(data.ejecting ? "EJECTING" : "STANDBY");
-                if (data?.fansOn !== undefined)
-                    self.fanState(data.fansOn ? "ON" : "OFF");
-                if (data?.ledsOn !== undefined)
-                    self.ledState(data.ledsOn ? "ON" : "OFF");
+                self.isErrorOrClosed(data.errorOrClosed);
+                self.ejecting(data.ejecting);
+                self.fansOn(data.fansOn);
+                self.ledsOn(data.ledsOn);
             });
         };
 
@@ -58,7 +83,7 @@ $(() => {
                     ...params
                 }),
                 contentType: "application/json; charset=UTF-8"
-            }).always(() => self.fetchStatus());
+            }).done(() => self.fetchStatus());
         };
 
         self.onStopEject = () => {

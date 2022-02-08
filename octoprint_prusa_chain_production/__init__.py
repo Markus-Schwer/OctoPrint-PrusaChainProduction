@@ -6,14 +6,6 @@ import requests
 import threading
 import flask
 
-def control_device(server_url, name, cmd):
-    # trim trailing slashes
-    if server_url.endswith('/'):
-        server_url = server_url[:-1]
-
-    requests.get("{}/{}/{}".format(server_url, name,
-                                    "1" if cmd else "0"))
-
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.StartupPlugin,
@@ -21,12 +13,42 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.TemplatePlugin,
                                  octoprint.plugin.EventHandlerPlugin,
                                  octoprint.plugin.SimpleApiPlugin):
-    server_url = None
     state = dict(
+        errorOrClosed=True,
         ejecting=False,
         fansOn=False,
         ledsOn=False
     )
+
+    def connect(self):
+        # TODO: fetch fan and led status from ejector
+        self.state = dict(
+            errorOrClosed=False,
+            ejecting=False,
+            fansOn=False,
+            ledsOn=False
+        )
+
+    def disconnect(self):
+        # reset status when disconnecting
+        self.state = dict(
+            errorOrClosed=True,
+            ejecting=False,
+            fansOn=False,
+            ledsOn=False
+        )
+
+    def eject(self):
+        self.state["ejecting"] = True
+
+    def cancel_eject(self):
+        self.state["ejecting"] = False
+
+    def set_fan(self, enabled):
+        self.state["fansOn"] = enabled
+
+    def set_led(self, enabled):
+        self.state["ledsOn"] = enabled
 
     ##~~ EventHandlerPlugin mixin
 
@@ -38,23 +60,19 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             # send message to frontend, to update its state
             self._plugin_manager.send_plugin_message(self._identifier, dict())
 
-    ##~~ AssetPlugin mixin
+    ##~~ StartupPlugin mixin
 
     def on_after_startup(self):
-        self.server_url = self._settings.get(["server_url"])
-        self._logger.info("server_url = {}".format(self.server_url))
+        self.connect()
 
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return dict(server_url="http://prusa_chain")
-
-    def on_settings_save(self, data):
-        octoprint.plugin.SettingsPlugin.on_settings_save(self, data)
-        self.server_url = self._settings.get(["server_url"])
-
-    def on_settings_initialized(self):
-        self.server_url = self._settings.get(["server_url"])
+        return dict(
+            serialPort="/dev/ttyS0",
+            ejectionTemp=15,
+            coolingTime=900
+        )
 
     ##~~ AssetPlugin mixin
 
@@ -77,27 +95,28 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                  template="prusa_chain_production_settings.jinja2"),
             dict(type="sidebar",
                  icon="cogs",
-                 template="prusa_chain_production_sidebar.jinja2")
+                 template="prusa_chain_production_sidebar.jinja2",
+                 template_header="prusa_chain_production_sidebar_header.jinja2")
         ]
 
     ##~~ SimpleApiPlugin mixin
 
     def get_api_commands(self):
-        return dict(eject=[], stop_eject=[], setFan=["enabled"], setLed=["enabled"])
+        return dict(connect=[], disconnect=[], eject=[], stop_eject=[], setFan=["enabled"], setLed=["enabled"])
 
     def on_api_command(self, command, data):
+        if command == "connect":
+            self.connect()
+        if command == "disconnect":
+            self.disconnect()
         if command == "eject":
-            self.state["ejecting"] = True
-            control_device(self.server_url, "eject", True)
+            self.eject()
         elif command == "stop_eject":
-            self.state["ejecting"] = False
-            control_device(self.server_url, "stop_eject", True)
+            self.cancel_eject()
         elif command == "setFan":
-            self.state["fansOn"] = data["enabled"]
-            control_device(self.server_url, "fan", data["enabled"])
+            self.set_fan(data["enabled"])
         elif command == "setLed":
-            self.state["ledsOn"] = data["enabled"]
-            control_device(self.server_url, "led", data["enabled"])
+            self.set_led(data["enabled"])
 
         # send message to frontend, to update its state
         self._plugin_manager.send_plugin_message(self._identifier, dict())
@@ -116,10 +135,8 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         # for details.
         return {
             "prusa_chain_production": {
-                "displayName":
-                "PrusaChainProduction Plugin",
-                "displayVersion":
-                self._plugin_version,
+                "displayName": "PrusaChainProduction Plugin",
+                "displayVersion": self._plugin_version,
 
                 # version check: github repository
                 "type":
@@ -141,7 +158,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 # If you want your plugin to be registered within OctoPrint under a different name than what you defined in setup.py
 # ("OctoPrint-PluginSkeleton"), you may define that here. Same goes for the other metadata derived from setup.py that
 # can be overwritten via __plugin_xyz__ control properties. See the documentation for that.
-__plugin_name__ = "PrusaChainProduction Plugin"
+__plugin_name__ = "Ejector"
 
 # Starting with OctoPrint 1.4.0 OctoPrint will also support to run under Python 3 in addition to the deprecated
 # Python 2. New plugins should make sure to run under both versions for now. Uncomment one of the following

@@ -1,11 +1,12 @@
 <div id="sidebar_prusa_chain_production" class="row-fluid">
 	<div class="row-fluid">
-		Ejector Status: <strong data-bind="text: ejectState"></strong><br/>
+		Ejector Status: <strong data-bind="text: ejectText"></strong><br/>
 	</div>
 	<div class="row-fluid">
-		Fan Status: <strong data-bind="text: fanState"></strong>
+		Fan Status: <strong data-bind="text: fanText"></strong>
 	</div>
 	<div class="row-fluid">
-		LED Status: <strong data-bind="text: ledState"></strong>
+		LED Status: <strong data-bind="text: ledText"></strong>
 	</div>
+  <button class="btn btn-block" data-bind="click: connect, text: connectionButtonText">Connect</button>
 </div>

@@ -1,27 +1,27 @@
 <div class="jog-panel" id="controls_prusa_chain_production">
     <h1>Ejector</h1>
     <div>
-        <button class="btn btn-block control-box btn-danger" data-bind="click: onEject">
+        <button class="btn btn-block control-box btn-danger" data-bind="enable: !isErrorOrClosed() && !ejecting(), click: onEject">
             Eject
         </button>
-        <button class="btn btn-block control-box btn-warning" data-bind="click: onStopEject">
-            Stop Eject
+        <button class="btn btn-block control-box btn-warning" data-bind="enable: !isErrorOrClosed(), click: onStopEject">
+            Cancel Eject
         </button>
         <label>Fan</label>
         <div class="btn-group" role="group" aria-label="Fan">
-            <button class="btn" data-parameter="true" data-bind="click: onSetFan">
+            <button class="btn" data-parameter="true" data-bind="enable: !isErrorOrClosed(), click: onSetFan">
                 On
             </button>
-            <button class="btn" data-parameter="false" data-bind="click: onSetFan">
+            <button class="btn" data-parameter="false" data-bind="enable: !isErrorOrClosed(), click: onSetFan">
                 Off
             </button>
         </div>
         <label>LED</label>
         <div class="btn-group" role="group" aria-label="LED">
-            <button class="btn" data-parameter="true" data-bind="click: onSetLed">
+            <button class="btn" data-parameter="true" data-bind="enable: !isErrorOrClosed(), click: onSetLed">
                 On
             </button>
-            <button class="btn" data-parameter="false" data-bind="click: onSetLed">
+            <button class="btn" data-parameter="false" data-bind="enable: !isErrorOrClosed(), click: onSetLed">
                 Off
             </button>
         </div>
