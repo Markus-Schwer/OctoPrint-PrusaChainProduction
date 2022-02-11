@@ -17,6 +17,7 @@ $(() => {
         self.fansOn = ko.observable(undefined);
         self.ledsOn = ko.observable(undefined);
         self.isErrorOrClosed = ko.observable(undefined);
+        self.coolingTimeLeft = ko.observable(0);
 
         self.connectionButtonText = ko.pureComputed(() => {
             if (self.isErrorOrClosed()) return gettext("Connect");
@@ -37,6 +38,24 @@ $(() => {
             else if (self.ledsOn()) return gettext("ON")
             else return gettext("OFF");
         });
+        self.coolingTimeLeftText = ko.pureComputed(() => {
+            if (!self.ejecting() && self.coolingTimeLeft() <= 0) return "-";
+            else return formatDuration(self.coolingTimeLeft());
+        });
+
+        self.startCoolingCountdown = (countdownSeconds) => {
+            clearInterval(self.countdown);
+            self.coolingTimeLeft(countdownSeconds);
+
+            self.countdown = setInterval(() => {
+                const newTimeLeft = self.coolingTimeLeft() - 1;
+                self.coolingTimeLeft(newTimeLeft);
+
+                if (newTimeLeft <= 0) {
+                    clearInterval(self.countdown);
+                }
+            }, 1000);
+        };
 
         self.connect = () => {
             if (self.isErrorOrClosed()) self.executeCommand("connect");
@@ -70,6 +89,9 @@ $(() => {
                 self.ejecting(data.ejecting);
                 self.fansOn(data.fansOn);
                 self.ledsOn(data.ledsOn);
+                if (data.coolingTimeLeft !== undefined) {
+                    self.startCoolingCountdown(data.coolingTimeLeft);
+                }
             });
         };
 

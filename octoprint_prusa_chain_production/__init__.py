@@ -5,6 +5,7 @@ import octoprint.plugin
 import requests
 import threading
 import flask
+import time
 
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
@@ -17,8 +18,10 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         errorOrClosed=True,
         ejecting=False,
         fansOn=False,
-        ledsOn=False
+        ledsOn=False,
+        coolingTimeLeft=None
     )
+    coolingStartTime=None
 
     def connect(self):
         # TODO: fetch fan and led status from ejector
@@ -26,7 +29,8 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             errorOrClosed=False,
             ejecting=False,
             fansOn=False,
-            ledsOn=False
+            ledsOn=False,
+            coolingTimeLeft=None
         )
 
     def disconnect(self):
@@ -35,14 +39,21 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             errorOrClosed=True,
             ejecting=False,
             fansOn=False,
-            ledsOn=False
+            ledsOn=False,
+            coolingTimeLeft=None
         )
 
     def eject(self):
         self.state["ejecting"] = True
 
+        self.set_fan(True)
+
+        self.coolingStartTime = time.monotonic()
+        self.state["coolingTimeLeft"] = self._settings.get(["coolingTime"])
+
     def cancel_eject(self):
         self.state["ejecting"] = False
+        self.set_fan(False)
 
     def set_fan(self, enabled):
         self.state["fansOn"] = enabled
@@ -122,6 +133,13 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     def on_api_get(self, request):
+        if (self.state["ejecting"] and self.coolingStartTime != None and self.state["coolingTimeLeft"] > 0):
+            # time remaining = total time - (current time - start time)
+            self.state["coolingTimeLeft"] = self._settings.get(["coolingTime"]) - int(time.monotonic() - self.coolingStartTime)
+        elif (self.state["coolingTimeLeft"] != None or self.coolingStartTime != None):
+            self.state["coolingTimeLeft"] = None
+            self.coolingStartTime = None
+
         return flask.jsonify(self.state)
 
     def is_api_adminonly(self):
