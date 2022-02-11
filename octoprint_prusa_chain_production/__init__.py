@@ -6,6 +6,7 @@ import requests
 import threading
 import flask
 import time
+import serial
 
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
@@ -22,19 +23,31 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         coolingTimeLeft=None
     )
     coolingStartTime=None
+    connection = None
+    ejectTimer = None
 
     def connect(self):
-        # TODO: fetch fan and led status from ejector
-        self.state = dict(
-            errorOrClosed=False,
-            ejecting=False,
-            fansOn=False,
-            ledsOn=False,
-            coolingTimeLeft=None
-        )
+        self.connection = serial.Serial(self._settings.get(["serialPort"]), 9600, timeout=500)
+
+        self.connection.write(b"PING\n")
+        if Serial.readline().decode('utf-8').rstrip() == 'PONG':
+            self._logger.info("Ejector connected")
+
+            # TODO: fetch fan and led status from ejector
+            self.state = dict(
+                errorOrClosed=False,
+                ejecting=False,
+                fansOn=False,
+                ledsOn=False,
+                coolingTimeLeft=None
+            )
+        else:
+            self._logger.warning("Error connecting to ejector")
 
     def disconnect(self):
-        # reset status when disconnecting
+        if (self.connection != None and self.connection.is_open):
+            self.connection.close()
+
         self.state = dict(
             errorOrClosed=True,
             ejecting=False,
@@ -43,22 +56,62 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             coolingTimeLeft=None
         )
 
-    def eject(self):
+        self._logger.info("disconnected ejector")
+
+    def test_result(expectedResult):
+        res = self.connection.readline().decode('utf-8').rstrip()
+        if not res == expectedResult:
+            raise Exception(f'Expected "${expectedResult}" from ejector, but got "${res}"')
+
+    def cool_and_eject(self):
+        self._logger.info(f'Starting eject, cooling for ${self._settings.get(["coolingTime"])} seconds...')
+
         self.state["ejecting"] = True
-
         self.set_fan(True)
-
         self.coolingStartTime = time.monotonic()
         self.state["coolingTimeLeft"] = self._settings.get(["coolingTime"])
 
+        self._printer.commands(["G1 Z210", "G1 X125 Y210"])
+
+        self.ejectTimer = threading.Timer(self._settings.get(["coolingTime"]), self.eject)
+        self.ejectTimer.start()
+
+    def eject(self):
+        self._logger.info("Ejecting!")
+
+        # move printer again, just to be sure
+        self._printer.commands(["G1 Z210", "G1 X125 Y210"])
+        time.sleep(25);
+
+        self.connection.write(b"EJECT\n")
+        self.test_result("START")
+        # wait for ejection to end
+        self.test_result("END")
+
     def cancel_eject(self):
+        self._logger.info("canceled ejection")
+        if (self.ejectTimer != None):
+            self.ejectTimer.cancel()
+
         self.state["ejecting"] = False
         self.set_fan(False)
 
     def set_fan(self, enabled):
+        onOffStr = "ON" if enabled else "OFF"
+        self._logger.info(f'turining Fans ${onOffStr}')
+
+        self.connection.write(bytes(f'FAN ${onOffStr}\n', 'utf-8'))
+        self.test_result("DONE")
+
         self.state["fansOn"] = enabled
 
     def set_led(self, enabled):
+        onOffStr = "ON" if enabled else "OFF"
+        self._logger.info(f'turining LEDs ${onOffStr}')
+
+        self.connection.write(bytes(f'LED ${onOffStr}\n', 'utf-8'))
+        self.test_result("DONE")
+
         self.state["ledsOn"] = enabled
 
     ##~~ EventHandlerPlugin mixin
@@ -66,15 +119,15 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     def on_event(self, event, payload):
         if event == "PrintDone":
             # non-blocking eject
-            threading.Thread(target=eject, args=(self.server_url, "eject", True))
+            threading.Thread(target=self.cool_and_eject).start()
 
             # send message to frontend, to update its state
             self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     ##~~ StartupPlugin mixin
 
-    def on_after_startup(self):
-        self.connect()
+    # def on_after_startup(self):
+    #     threading.Thread(target=self.connect).start()
 
     ##~~ SettingsPlugin mixin
 
