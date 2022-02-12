@@ -30,7 +30,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         self.connection = serial.Serial(self._settings.get(["serialPort"]), 9600, timeout=500)
 
         self.connection.write(b"PING\n")
-        if Serial.readline().decode('utf-8').rstrip() == 'PONG':
+        if self.connection.readline().decode('utf-8').rstrip() == 'PONG':
             self._logger.info("Ejector connected")
 
             # TODO: fetch fan and led status from ejector
