@@ -78,6 +78,9 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
     def eject(self):
         self._logger.info("Ejecting!")
+        self.state["ejecting"] = True
+
+        self.set_fan(False)
 
         # move printer again, just to be sure
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
@@ -88,13 +91,16 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         # wait for ejection to end
         self.test_result("END")
 
+        # update status
+        self.state["ejecting"] = False
+
     def cancel_eject(self):
         self._logger.info("canceled ejection")
         if (self.ejectTimer != None):
             self.ejectTimer.cancel()
 
-        self.state["ejecting"] = False
         self.set_fan(False)
+        self.state["ejecting"] = False
 
     def set_fan(self, enabled):
         onOffStr = "ON" if enabled else "OFF"
