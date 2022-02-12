@@ -61,10 +61,10 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     def test_result(self, expectedResult):
         res = self.connection.readline().decode('utf-8').rstrip()
         if not res == expectedResult:
-            raise Exception(f'Expected "${expectedResult}" from ejector, but got "${res}"')
+            raise Exception(f'Expected "{expectedResult}" from ejector, but got "{res}"')
 
     def cool_and_eject(self):
-        self._logger.info(f'Starting eject, cooling for ${self._settings.get(["coolingTime"])} seconds...')
+        self._logger.info(f'Starting eject, cooling for {self._settings.get(["coolingTime"])} seconds...')
 
         self.state["ejecting"] = True
         self.set_fan(True)
@@ -98,18 +98,18 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
     def set_fan(self, enabled):
         onOffStr = "ON" if enabled else "OFF"
-        self._logger.info(f'turining Fans ${onOffStr}')
+        self._logger.info(f'turining Fans {onOffStr}')
 
-        self.connection.write(bytes(f'FAN ${onOffStr}\n', 'utf-8'))
+        self.connection.write(bytes(f'FAN {onOffStr}\n', 'utf-8'))
         self.test_result("DONE")
 
         self.state["fansOn"] = enabled
 
     def set_led(self, enabled):
         onOffStr = "ON" if enabled else "OFF"
-        self._logger.info(f'turining LEDs ${onOffStr}')
+        self._logger.info(f'turining LEDs {onOffStr}')
 
-        self.connection.write(bytes(f'LED ${onOffStr}\n', 'utf-8'))
+        self.connection.write(bytes(f'LED {onOffStr}\n', 'utf-8'))
         self.test_result("DONE")
 
         self.state["ledsOn"] = enabled
