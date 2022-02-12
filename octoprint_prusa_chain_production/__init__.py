@@ -58,7 +58,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self._logger.info("disconnected ejector")
 
-    def test_result(expectedResult):
+    def test_result(self, expectedResult):
         res = self.connection.readline().decode('utf-8').rstrip()
         if not res == expectedResult:
             raise Exception(f'Expected "${expectedResult}" from ejector, but got "${res}"')
