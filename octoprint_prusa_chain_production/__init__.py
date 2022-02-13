@@ -15,32 +15,30 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.TemplatePlugin,
                                  octoprint.plugin.EventHandlerPlugin,
                                  octoprint.plugin.SimpleApiPlugin):
-    state = dict(
-        errorOrClosed=True,
-        ejecting=False,
-        fansOn=False,
-        ledsOn=False,
-        coolingTimeLeft=None
-    )
-    coolingStartTime=None
+    state = dict(errorOrClosed=True,
+                 ejecting=False,
+                 fansOn=False,
+                 ledsOn=False,
+                 coolingTimeLeft=None)
+    coolingStartTime = None
     connection = None
     ejectTimer = None
 
     def connect(self):
-        self.connection = serial.Serial(self._settings.get(["serialPort"]), 9600, timeout=500)
+        self.connection = serial.Serial(self._settings.get(["serialPort"]),
+                                        9600,
+                                        timeout=500)
 
         self.connection.write(b"PING\n")
         if self.connection.readline().decode('utf-8').rstrip() == 'PONG':
             self._logger.info("Ejector connected")
 
             # TODO: fetch fan and led status from ejector
-            self.state = dict(
-                errorOrClosed=False,
-                ejecting=False,
-                fansOn=False,
-                ledsOn=False,
-                coolingTimeLeft=None
-            )
+            self.state = dict(errorOrClosed=False,
+                              ejecting=False,
+                              fansOn=False,
+                              ledsOn=False,
+                              coolingTimeLeft=None)
         else:
             self._logger.warning("Error connecting to ejector")
 
@@ -48,23 +46,24 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         if (self.connection != None and self.connection.is_open):
             self.connection.close()
 
-        self.state = dict(
-            errorOrClosed=True,
-            ejecting=False,
-            fansOn=False,
-            ledsOn=False,
-            coolingTimeLeft=None
-        )
+        self.state = dict(errorOrClosed=True,
+                          ejecting=False,
+                          fansOn=False,
+                          ledsOn=False,
+                          coolingTimeLeft=None)
 
         self._logger.info("disconnected ejector")
 
     def test_result(self, expectedResult):
         res = self.connection.readline().decode('utf-8').rstrip()
         if not res == expectedResult:
-            raise Exception(f'Expected "{expectedResult}" from ejector, but got "{res}"')
+            raise Exception(
+                f'Expected "{expectedResult}" from ejector, but got "{res}"')
 
     def cool_and_eject(self):
-        self._logger.info(f'Starting eject, cooling for {self._settings.get(["coolingTime"])} seconds...')
+        self._logger.info(
+            f'Starting eject, cooling for {self._settings.get(["coolingTime"])} seconds...'
+        )
 
         self.state["ejecting"] = True
         self.set_fan(True)
@@ -73,7 +72,8 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
 
-        self.ejectTimer = threading.Timer(self._settings.get(["coolingTime"]), self.eject)
+        self.ejectTimer = threading.Timer(self._settings.get(["coolingTime"]),
+                                          self.eject)
         self.ejectTimer.start()
 
     def eject(self):
@@ -84,7 +84,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         # move printer again, just to be sure
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
-        time.sleep(25);
+        time.sleep(25)
 
         self.connection.write(b"EJECT\n")
         self.test_result("START")
@@ -138,11 +138,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return dict(
-            serialPort="/dev/ttyS0",
-            ejectionTemp=15,
-            coolingTime=900
-        )
+        return dict(serialPort="/dev/ttyS0", ejectionTemp=15, coolingTime=900)
 
     ##~~ AssetPlugin mixin
 
@@ -162,25 +158,35 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
             dict(type="generic",
                  template="prusa_chain_production_controls.jinja2"),
             dict(type="settings",
-                 template="prusa_chain_production_settings.jinja2", custom_bindings=False),
-            dict(type="sidebar",
-                 icon="cogs",
-                 template="prusa_chain_production_sidebar.jinja2",
-                 template_header="prusa_chain_production_sidebar_header.jinja2")
+                 template="prusa_chain_production_settings.jinja2",
+                 custom_bindings=False),
+            dict(
+                type="sidebar",
+                icon="cogs",
+                template="prusa_chain_production_sidebar.jinja2",
+                template_header="prusa_chain_production_sidebar_header.jinja2")
         ]
 
     ##~~ SimpleApiPlugin mixin
 
     def get_api_commands(self):
-        return dict(connect=[], disconnect=[], eject=[], stop_eject=[], setFan=["enabled"], setLed=["enabled"])
+        return dict(connect=[],
+                    disconnect=[],
+                    eject=[],
+                    coolAndEject=[],
+                    stop_eject=[],
+                    setFan=["enabled"],
+                    setLed=["enabled"])
 
     def on_api_command(self, command, data):
         if command == "connect":
             self.connect()
-        if command == "disconnect":
+        elif command == "disconnect":
             self.disconnect()
-        if command == "eject":
+        elif command == "eject":
             self.eject()
+        elif command == "coolAndEject":
+            self.cool_and_eject()
         elif command == "stop_eject":
             self.cancel_eject()
         elif command == "setFan":
@@ -192,10 +198,14 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     def on_api_get(self, request):
-        if (self.state["ejecting"] and self.coolingStartTime != None and self.state["coolingTimeLeft"] > 0):
+        if (self.state["ejecting"] and self.coolingStartTime != None
+                and self.state["coolingTimeLeft"] > 0):
             # time remaining = total time - (current time - start time)
-            self.state["coolingTimeLeft"] = self._settings.get(["coolingTime"]) - int(time.monotonic() - self.coolingStartTime)
-        elif (self.state["coolingTimeLeft"] != None or self.coolingStartTime != None):
+            self.state["coolingTimeLeft"] = self._settings.get([
+                "coolingTime"
+            ]) - int(time.monotonic() - self.coolingStartTime)
+        elif (self.state["coolingTimeLeft"] != None
+              or self.coolingStartTime != None):
             self.state["coolingTimeLeft"] = None
             self.coolingStartTime = None
 
@@ -212,8 +222,10 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         # for details.
         return {
             "prusa_chain_production": {
-                "displayName": "PrusaChainProduction Plugin",
-                "displayVersion": self._plugin_version,
+                "displayName":
+                "PrusaChainProduction Plugin",
+                "displayVersion":
+                self._plugin_version,
 
                 # version check: github repository
                 "type":

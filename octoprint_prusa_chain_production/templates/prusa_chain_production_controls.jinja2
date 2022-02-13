@@ -1,11 +1,14 @@
 <div class="jog-panel" id="controls_prusa_chain_production">
     <h1>Ejector</h1>
     <div>
-        <button class="btn btn-block control-box btn-danger" data-bind="enable: !isErrorOrClosed() && !ejecting(), click: onEject">
-            Eject
+        <button class="btn btn-block control-box" data-bind="enable: ejectEnabled, click: onCoolAndEject">
+            Start Eject
         </button>
-        <button class="btn btn-block control-box btn-warning" data-bind="enable: !isErrorOrClosed(), click: onStopEject">
+        <button class="btn btn-block control-box" data-bind="enable: !isErrorOrClosed(), click: onStopEject">
             Cancel Eject
+        </button>
+        <button class="btn btn-block control-box btn-danger" data-bind="enable: ejectEnabled, click: onEject">
+            Eject now
         </button>
         <label>Fan</label>
         <div class="btn-group" role="group" aria-label="Fan">

@@ -13,6 +13,8 @@ $(() => {
         self.loginStateViewModel = parameters[0];
         self.settingsViewModel = parameters[1];
         self.controlViewModel = parameters[2];
+        self.printerStateViewModel = parameters[3];
+
         self.ejecting = ko.observable(undefined);
         self.fansOn = ko.observable(undefined);
         self.ledsOn = ko.observable(undefined);
@@ -41,6 +43,10 @@ $(() => {
         self.coolingTimeLeftText = ko.pureComputed(() => {
             if (!self.ejecting() && self.coolingTimeLeft() <= 0) return "-";
             else return formatDuration(self.coolingTimeLeft());
+        });
+
+        self.ejectEnabled = ko.pureComputed(() => {
+            return !self.printerStateViewModel.isBusy() && !self.isErrorOrClosed() && !self.ejecting();
         });
 
         self.startCoolingCountdown = (countdownSeconds) => {
@@ -112,6 +118,10 @@ $(() => {
             self.executeCommand("stop_eject");
         };
 
+        self.onCoolAndEject = () => {
+            self.executeCommand("coolAndEject");
+        };
+
         self.onEject = () => {
             self.executeCommand("eject");
         };
@@ -134,7 +144,7 @@ $(() => {
     OCTOPRINT_VIEWMODELS.push({
         construct: PrusaChainProductionViewModel,
         // ViewModels your plugin depends on, e.g. loginStateViewModel, settingsViewModel, ...
-        dependencies: ["loginStateViewModel", "settingsViewModel", "controlViewModel"],
+        dependencies: ["loginStateViewModel", "settingsViewModel", "controlViewModel", "printerStateViewModel"],
         elements: [
             "#controls_prusa_chain_production",
             "#sidebar_plugin_prusa_chain_production_wrapper"
