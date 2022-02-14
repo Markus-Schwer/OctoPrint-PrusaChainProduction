@@ -8,13 +8,16 @@ import flask
 import time
 import serial
 
+import continuousprint.clear_bed_plugin
+
 
 class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.StartupPlugin,
                                  octoprint.plugin.AssetPlugin,
                                  octoprint.plugin.TemplatePlugin,
                                  octoprint.plugin.EventHandlerPlugin,
-                                 octoprint.plugin.SimpleApiPlugin):
+                                 octoprint.plugin.SimpleApiPlugin,
+                                 continuousprint.clear_bed_plugin.ClearBedPlugin):
     state = dict(errorOrClosed=True,
                  ejecting=False,
                  fansOn=False,
@@ -76,6 +79,9 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                           self.eject)
         self.ejectTimer.start()
 
+        # send message to frontend, to update its state
+        self._plugin_manager.send_plugin_message(self._identifier, dict())
+
     def eject(self):
         self._logger.info("Ejecting!")
         self.state["ejecting"] = True
@@ -94,6 +100,9 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         # update status
         self.state["ejecting"] = False
 
+        # send message to frontend, to update its state
+        self._plugin_manager.send_plugin_message(self._identifier, dict())
+
     def cancel_eject(self):
         self._logger.info("canceled ejection")
         if (self.ejectTimer != None):
@@ -101,6 +110,9 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self.set_fan(False)
         self.state["ejecting"] = False
+
+        # send message to frontend, to update its state
+        self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     def set_fan(self, enabled):
         onOffStr = "ON" if enabled else "OFF"
@@ -120,15 +132,21 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self.state["ledsOn"] = enabled
 
+    ##~~ ClearBedPlugin mixin
+
+    def clear_bed(self):
+        self._logger.info("got clear_bed call from continuousprint")
+        self.cool_and_eject()
+        # wait for actual eject to finish
+        self.ejectTimer.join()
+
     ##~~ EventHandlerPlugin mixin
 
     def on_event(self, event, payload):
-        if event == "PrintDone":
+        if self._settings.getBoolean(["autoEject"]) and event == "PrintDone":
+            self._logger.info("reacting on PrintDone event")
             # non-blocking eject
             threading.Thread(target=self.cool_and_eject).start()
-
-            # send message to frontend, to update its state
-            self._plugin_manager.send_plugin_message(self._identifier, dict())
 
     ##~~ StartupPlugin mixin
 
@@ -138,7 +156,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
     ##~~ SettingsPlugin mixin
 
     def get_settings_defaults(self):
-        return dict(serialPort="/dev/ttyS0", ejectionTemp=15, coolingTime=900)
+        return dict(serialPort="/dev/ttyS0", ejectionTemp=15, coolingTime=900, autoEject=True)
 
     ##~~ AssetPlugin mixin
 
