@@ -38,10 +38,10 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
             # TODO: fetch fan and led status from ejector
             self.state = dict(errorOrClosed=False,
-                              ejecting=False,
-                              fansOn=False,
-                              ledsOn=False,
-                              coolingTimeLeft=None)
+                                ejecting=False,
+                                fansOn=False,
+                                ledsOn=False,
+                                coolingTimeLeft=None)
         else:
             self._logger.warning("Error connecting to ejector")
 
@@ -65,17 +65,17 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
     def cool_and_eject(self):
         self._logger.info(
-            f'Starting eject, cooling for {self._settings.get(["coolingTime"])} seconds...'
+            f'Starting eject, cooling for {self._settings.getInt(["coolingTime"])} seconds...'
         )
 
         self.state["ejecting"] = True
         self.set_fan(True)
         self.coolingStartTime = time.monotonic()
-        self.state["coolingTimeLeft"] = self._settings.get(["coolingTime"])
+        self.state["coolingTimeLeft"] = self._settings.getInt(["coolingTime"])
 
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
 
-        self.ejectTimer = threading.Timer(self._settings.get(["coolingTime"]),
+        self.ejectTimer = threading.Timer(self._settings.getInt(["coolingTime"]),
                                           self.eject)
         self.ejectTimer.start()
 
@@ -222,7 +222,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         if (self.state["ejecting"] and self.coolingStartTime != None
                 and self.state["coolingTimeLeft"] > 0):
             # time remaining = total time - (current time - start time)
-            self.state["coolingTimeLeft"] = self._settings.get([
+            self.state["coolingTimeLeft"] = self._settings.getInt([
                 "coolingTime"
             ]) - int(time.monotonic() - self.coolingStartTime)
         elif (self.state["coolingTimeLeft"] != None
