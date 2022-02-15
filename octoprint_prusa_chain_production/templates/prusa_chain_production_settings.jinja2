@@ -1,27 +1,29 @@
 <h3>{{ _('Prusa chain Production') }}</h3>
 <form id="settings_plugin_prusa_chain_production_form" class="form-horizontal">
   <div class="control-group">
-    <label class="control-label" for="settings_prusa_chain_production_serialPort">Ejector Serial Port</label>
+    <label class="control-label" for="settings_prusa_chain_production_serial_port">Ejector Serial Port</label>
     <div class="controls">
-      <input id="settings_prusa_chain_production_serialPort" type="text" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.serialPort" />
+      <input id="settings_prusa_chain_production_serial_port" type="text" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.serialPort" />
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label" for="settings_prusa_chain_production_server_url">Ejection Temperature</label>
+    <label class="control-label" for="settings_prusa_chain_production_ejection_temp">Ejection Temperature</label>
     <div class="controls">
-      <input id="settings_prusa_chain_production_server_url" type="number" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.ejectionTemp" />
+      <input id="settings_prusa_chain_production_ejection_temp" type="number" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.ejectionTemp" />
     </div>
   </div>
   <div class="control-group">
-    <label class="control-label" for="settings_prusa_chain_production_server_url">Cooling Time</label>
+    <label class="control-label" for="settings_prusa_chain_production_cooling_time">Cooling Time</label>
     <div class="controls">
-      <input id="settings_prusa_chain_production_server_url" type="number" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.coolingTime" />
+      <input id="settings_prusa_chain_production_cooling_time" type="number" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.coolingTime" />
     </div>
   </div>
   <div class="control-group">
     <label class="control-label" for="settings_prusa_chain_production_auto_eject">Auto Eject after print</label>
     <div class="controls">
-      <input id="settings_prusa_chain_production_auto_eject" type="checkbox" class="input-block-level" data-bind="value: settings.plugins.prusa_chain_production.autoEject" />
+      <label class="checkbox">
+        <input id="settings_prusa_chain_production_auto_eject" type="checkbox" data-bind="checked: settings.plugins.prusa_chain_production.autoEject" />
+      </label>
     </div>
   </div>
 </form>
