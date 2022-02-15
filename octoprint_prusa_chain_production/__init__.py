@@ -88,6 +88,9 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self.set_fan(False)
 
+        # home the printer, just in case that there was a crash previously or the printer decides that it wants to home again.
+        # by explicitly triggering this home here, we make sure that the next gcode is executed correctly
+        self._printer.home(["x", "y", "z"])
         # move printer again, just to be sure
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
         time.sleep(25)
