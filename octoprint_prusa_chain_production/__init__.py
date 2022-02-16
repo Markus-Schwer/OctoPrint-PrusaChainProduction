@@ -2,6 +2,7 @@
 from __future__ import absolute_import
 
 import octoprint.plugin
+import octoprint.printer
 import requests
 import threading
 import flask
@@ -17,6 +18,7 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
                                  octoprint.plugin.TemplatePlugin,
                                  octoprint.plugin.EventHandlerPlugin,
                                  octoprint.plugin.SimpleApiPlugin,
+                                 octoprint.printer.PrinterCallback,
                                  continuousprint.clear_bed_plugin.ClearBedPlugin):
     state = dict(errorOrClosed=True,
                  ejecting=False,
@@ -88,12 +90,11 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
 
         self.set_fan(False)
 
-        # home the printer, just in case that there was a crash previously or the printer decides that it wants to home again.
-        # by explicitly triggering this home here, we make sure that the next gcode is executed correctly
-        self._printer.home(["x", "y", "z"])
+        self._printer.register_callback(self)
         # move printer again, just to be sure
         self._printer.commands(["G1 Z210", "G1 X125 Y210"])
         time.sleep(25)
+        self._printer.unregister_callback(self)
 
         self.connection.write(b"EJECT\n")
         self.test_result("START")
@@ -134,6 +135,11 @@ class PrusaChainProductionPlugin(octoprint.plugin.SettingsPlugin,
         self.test_result("DONE")
 
         self.state["ledsOn"] = enabled
+
+    ##~~ PrinterCallback mixin
+
+    def on_printer_add_log(self, data):
+        self._logger.info(f"on_printer_add_log: {data}")
 
     ##~~ ClearBedPlugin mixin
 
